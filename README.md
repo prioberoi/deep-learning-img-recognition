@@ -12,7 +12,7 @@ The jetpack needs a 64-bit ubuntu 16.04, which is what is running on the jetson 
 
 This [guide](http://www.slothparadise.com/setup-cuda-7-0-nvidia-jetson-tx1-jetpack-detailed/) was superbly helpful for installing jetpack. The only thing I would add is that my screen would keep freezing when I was flashing the jetpack over to the jetson. 
 
-Terminal frozen at writing partition app with system.img [Terminal frozen at writing partition app with system.img]!(./img/Screen Shot frozen terminal.png)
+Terminal frozen at writing partition app with system.img ![Terminal frozen at writing partition app with system.img](img/Screen Shot frozen terminal.png)
 
 That turned turned out to be an issue with the USB being set to 1.0 instead of 2.0, so in the USB settings from the VirtualBox manager, I selected "Enable USB Controller" (while the vm was powered down). This required installing the [oracle virtualbox extension pack](https://www.virtualbox.org/wiki/Downloads. Another small snaffu I ran into was my screen would freeze on "applet not running on device, continue with bootloader", which turned out to be an issue because my mac/the vm and my jetson were not on the same network. 
 
