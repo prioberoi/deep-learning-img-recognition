@@ -166,7 +166,7 @@ layer {
 
 **This has a `num_output: 500` because each **
 
-##### ReLU activations for the neurons
+#### ReLU activations for the neurons
 
 Interestingly, rectified linear activation tend to outperform sigmoid or tanh functions, but I couldn't find a solid reason why. When we look at optimizing our model, we might try to compare the three.
 
@@ -220,7 +220,7 @@ Our network goes `input --> convolutional layer --> pooling layer --> convolutio
 
 By adding that second round of convolutional and pooling layers, we are taking the output from the first pooling layer (each neuron of which indicates the presence or absence of a particular feature), which makes sense if you think of the output from that layer as a condensed down version of the original image. Also, this second convolutional layer doesn't just work on the 5 x 5 local receptive field from one feature map, but from all feature maps.
 
-####
+### Training the model
 
 The `lenet_solver.prototxt` defines
 
@@ -251,8 +251,6 @@ test_interval: 500
 base_lr: 0.01
 momentum: 0.9
 weight_decay: 0.0005
-
-```
 # The learning rate policy
 lr_policy: "inv"
 gamma: 0.0001
@@ -271,8 +269,6 @@ snapshot_prefix: "examples/mnist/lenet"
 # solver mode: CPU or GPU
 solver_mode: GPU
 ```
-
-### Training the model
 
 Next we run the train_lenet.sh file to train the model. This runs the train command and passes the protobuf file as an argument.
 
