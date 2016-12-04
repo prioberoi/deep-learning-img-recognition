@@ -12,7 +12,7 @@ The jetpack needs a 64-bit ubuntu 16.04, which is what is running on the jetson 
 
 This [guide](http://www.slothparadise.com/setup-cuda-7-0-nvidia-jetson-tx1-jetpack-detailed/) was superbly helpful for installing jetpack. The only thing I would add is that my screen would keep freezing when I was flashing the jetpack over to the jetson. 
 
-Terminal frozen at writing partition app with system.img ![Terminal frozen at writing partition app with system.img](img/scrnshot_frozen_terminal.png | width=50)
+Terminal frozen at writing partition app with system.img ![Terminal frozen at writing partition app with system.img](img/scrnshot_frozen_terminal.png)
 
 That turned turned out to be an issue with the USB being set to 1.0 instead of 2.0, so in the USB settings from the VirtualBox manager, I selected "Enable USB Controller" (while the vm was powered down). This required installing the [oracle virtualbox extension pack](https://www.virtualbox.org/wiki/Downloads). Another small snaffu I ran into was my screen would freeze on "applet not running on device, continue with bootloader", which turned out to be an issue because my mac/the vm and my jetson were not on the same network. 
 
@@ -34,12 +34,13 @@ LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib /usr/lib/aarch64-linux-gnu
 
 [This tutorial](http://caffe.berkeleyvision.org/gathered/examples/mnist.html) was helpful in training and testing a deep learning model. Since this is my first deep learning model, Michael Nielsen's [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/) book was great for wrapping my brain around the concepts that drive deep learning.
 
-The code for the walkthrough of the layers below are from `lenet_train_test.prototxt` in the examples/mnist directory. 
+The code for the walkthrough of the layers below are from `lenet_train_test.prototxt` in the ~/caffe/examples/mnist directory. 
 
 ### Data
 
-There are two data layers, one which will runin the train phase and the other will run in the test phase. 
+There are two data layers, one which will run in the train phase and the other will run in the test phase. 
 
+```
 layer {
   name: "mnist"
   type: "Data"
@@ -74,16 +75,17 @@ layer {
     backend: LMDB
   }
 }
+```
 
-### MNIST classification model used the LeNet network
+### MNIST classification model 
 
-We are using a convolutional neural network, which contains convolutional layers and pooling layers. 
+Our Convolutional Neural Net is a slight adaption from the LeNet network. It's made up of the following layers.
 
 #### Convolutional Layer
 
-Convolutional neural networks tend to outperform other techniques for image classification, including 2D images like handwritten numbers. This is because they take advantage of the spatial structure of the image. They do this by using local receptive fields, which means a given neuron in a hidden layer is connected to a small region of input neurons and each of those connections has a learned weight and an overall bias. The same weights and overall bias are used for each local receptive field, so it looks for a particular feature of the image everywhere on the image, which also gives it the flexibility to handle an image where the handwritten digit is in one corner of the image (translation invariance of images). The shared weights and bias for the hidden layer is called a "filter" sometimes.
+Convolutional neural networks tend to outperform other techniques for image classification, including 2D images like handwritten numbers. This is because they take advantage of the spatial structure of the image. They do this by using local receptive fields, which means a given neuron in a hidden layer is connected to a small region of input neurons and each of those connections has a learned weight and an overall bias. The same weights and overall bias are used for each local receptive field. This means it looks for a particular feature of the image everywhere on the image, which also gives it the flexibility to handle an image where the handwritten digit is in one corner of the image (translation invariance of images). The shared weights and bias for the hidden layer is called a "filter" sometimes.
 
-The map from the input layer to the hidden layer is a feature map. Multiple feature maps make up a convolutional layer. The LeNet-5 convolutional neural net [used six feature maps](http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf). Our lenet_train_test.prototxt file defines a CNN made of five feature maps (`kernel_size: 5`).
+The map from the input layer to the hidden layer is a feature map. Multiple feature maps make up a convolutional layer. The LeNet-5 convolutional neural net [used 6 feature maps](http://yann.lecun.com/exdb/publis/pdf/lecun-01a.pdf). Our lenet_train_test.prototxt file defines a CNN made of 20 feature maps (`num_output: 20`). 
 
 ```
 layer {
@@ -92,7 +94,7 @@ layer {
   bottom: "data"
   top: "conv1"
   param {
-    lr_mult: 1
+    lr_mult: 1 
   }
   param {
     lr_mult: 2
@@ -111,6 +113,12 @@ layer {
 }
 
 ```
+
+The `kernel_size: 5` means each local receptive field is 5x5 neurons and a `stride: 1`  means each local receptive field slides one over. 
+
+`lr_mult` is defined first for the filters as a learning rate of 1 and second for the biases, with a learning rate of 2. Our parameters don't include the decay multipliers for each.
+
+The `weight_filler` initializes the filters from [Xavier algorithm](http://jmlr.org/proceedings/papers/v9/glorot10a/glorot10a.pdf) instead of a Gaussian distribution. [This](http://andyljones.tumblr.com/post/110998971763/an-explanation-of-xavier-initialization) and [this](https://prateekvjoshi.com/2016/03/29/understanding-xavier-initialization-in-deep-neural-networks/) blogpost was helpful in getting a better understanding of the algorithm. My take away is the Xavier algorithm may help with the issue of a Gaussian distribution weight initialization allowing a neuron to saturate more and therefore see learning slowdown. Caffe does this by picking weights from a Gaussian distribution with a mean of 0 and a variance of 1/N.
 
 #### Pooling Layer
 
@@ -164,7 +172,7 @@ layer {
 }
 ```
 
-**This has a `num_output: 500` because each **
+**This has a `num_output: 500` which is weird because I though this was the number of output classes (i.e. 10, one for each possible digit)**
 
 #### ReLU activations for the neurons
 
@@ -222,7 +230,7 @@ By adding that second round of convolutional and pooling layers, we are taking t
 
 ### Training the model
 
-The `lenet_solver.prototxt` defines
+The `lenet_solver.prototxt` defines is where we define variables for ths olver. 
 
 where to find the lenet_train_test.prototxt file
 ```
@@ -238,14 +246,14 @@ net: "examples/mnist/lenet_train_test.prototxt"
 test_iter: 100
 
 ```
-The above prints the training loss function every 100 iterations, below, test the network every 500 iterations
+The code above prints the training loss function every 100 iterations, and below, tests the network every 500 iterations
 
 ```
 # Carry out testing every 500 training iterations.
 test_interval: 500
 ```
 
-
+This defines a learning rate of 0.01 and a momentum of 0.9. For SGD, caffe recommends that the learning rate be around 0.01 and that it drops by a constant factor (`gamma`) throughout training
 ```
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.01
@@ -292,6 +300,31 @@ We also got the model and solver state at 5000.
 
 ### Optimizing
 
-Signmoid, tanh and Rectified Linear Unit (ReLU) activation functions are options for activation functions.
+Things to try
+
+- Sigmoid, tanh and Rectified Linear Unit (ReLU) activation functions are options for activation functions.
+
+convolutional layer
+- change number of features to 40 feature maps: num_output: 20
+- change kernel_size in convolutional layer
+- play with strid length
+- change weight initialization (http://neuralnetworksanddeeplearning.com/chap3.html#weight_initialization) from xavier to normalized gaussian random variables (which means a neuron can saturate and have a learning slowdown):
+	http://caffe.berkeleyvision.org/tutorial/layers.html
+	weight_filler {
+      type: "gaussian" # initialize the filters from a Gaussian
+      std: 0.01        # distribution with stdev 0.01 (default mean: 0)
+    }
+
+regularization:
+- L1 and L2 regularization
+	try l2 regularization of λ=0.1
+- dropout 
+- artificial expansion of the training data
+
+loss:
+- backpropagation
+
+- try a learning rate of η=0.03
+- could the learning rate be a function of the epoch number?
 
 Here is a plot of the per-epoch validaion accuracies for each.
