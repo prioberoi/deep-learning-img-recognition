@@ -58,7 +58,7 @@ This coverts the MNIST data into lmdb format, based on the value assigned to $BA
 
 Our Convolutional Neural Net uses supervised learning trained by stochastic gradient descent and is a slight adaption of the LeNet network. When training a CNN, we take the training inputs in batches until we have exhausted the inputs, which is the end of one epoch. 
 
-We take our training data in batches, each forward and backward pass on batches of the training data count as an interation. An epoch is the count of how many times we complete a forward and backward pass on all the data in the training set. Our training data is made up of 60,000 images and our `batch_size` is 64, which means it will take about 938 iterations to make up one epoch and cover the whole dataset. We have defined the `max_iter` at 10,000, which means our model will stop training at approximately 10 epochs.
+We take our training data in batches, each forward and backward pass on batches of the training data count as an iteration. Our training data is made up of 60,000 images and our `batch_size` is 64, which means it will take about 938 iterations to make up one epoch and cover the whole dataset. We have defined the `max_iter` at 10,000, which means our model will stop training at approximately 10 epochs.
 
 Let's walkthrough the layers of our neural net, the code for which is in `lenet_train_test.prototxt` in the ~/caffe/examples/mnist directory. 
 
@@ -254,14 +254,16 @@ Our whole network follows `input --> convolutional layer --> pooling layer --> c
 By adding that second round of convolutional and pooling layers, we use the output from the first pooling layer (each neuron of which indicates the presence or absence of a particular feature), which makes sense if you think of the output from that layer as a condensed down version of the original image. Also, this second convolutional layer doesn't just work on the 5 x 5 local receptive field from one feature map, but from all feature maps.
 
 So far, the number of neurons in each layer have changed like this for each image:
-28 x 28 input neurons
-20 x 24 x 24 hidden neurons in the convolutional layer
-20 x 12 x 12 hidden neurons in the pooling layer
-50 x 2 x 2 hidden neurons in the convolutional layer <------what?
-50 x 1 x 1 hidden neurons in the pooling layer <------what?
-500 x x x x hidden neurons in fully connected layer
-10 x x x x hidden neurons in fully connected layer
-leaving us with 10 output neurons
+
+28 x 28 input neurons <- for each of the 60,000 images
+20 x 24 x 24 hidden neurons in the convolutional layer <-- 20 feature maps and 24x24 because of the 5x5 local receptive fields
+20 x 12 x 12 hidden neurons in the pooling layer <- 12x12 because of the 2x2 kernel size.
+50 x 8 x 8 hidden neurons in the convolutional layer 
+50 x 4 x 4 hidden neurons in the pooling layer
+500 hidden neurons in fully connected layer
+10 hidden neurons in fully connected layer
+
+which leaves us with 10 outputs.
 
 ### Training the model
 
@@ -277,7 +279,7 @@ This tells the solver where to find the net file (lenet_train_test.prototxt)
 net: "examples/mnist/lenet_train_test.prototxt"
 ```
 
-When testing the model, 100 forward passes with 100 test iterations means we test the model of the full 10,000 images.
+When testing the model, 100 forward passes with 100 test iterations means we test the model on the full 10,000 test images.
 ```
 # test_iter specifies how many forward passes the test should carry out.
 # In the case of MNIST, we have test batch size 100 and 100 test iterations,
@@ -288,19 +290,16 @@ test_iter: 100
 
 At each iteration the output and loss are backpropogated to compute the gradients, which then updates parameters.
 
-The model is tested every 500 iterations
-
+The model is tested every 500 iterations so we can look at the change in accuracy and loss over iterations
 ```
 # Carry out testing every 500 training iterations.
 test_interval: 500
 ```
 
-This defines a learning rate of 0.01 and a momentum of 0.9. For SGD, caffe recommends that the learning rate be around 0.01 and that it drops by a constant factor (`gamma`) throughout training.
-
-We have a learning rate decay policy of "inv", which means the learning rate changes at each iteration in this way:
+For SGD, caffe recommends that the learning rate be around 0.01 and that it drops by a constant factor (`gamma`) throughout training. This defines a learning rate (`base_lr`) of 0.01 and a momentum of 0.9. The learning rate decay policy of "inv",  means the learning rate decreases at each iteration in this way:
 base_lr * (1 + gamma * iter) ^ (- power)
 
-With deep networks, finding the right balance for the learning rate means increasing performance and reducing training time.  The inv configuration below means the learning rate decreases gradually over time, which means large changes at the begiining of training and subsequently smaller updates to weights as training continues. 
+With deep networks, finding the right balance for the learning rate means increasing performance and reducing training time.  The inv configuration decreases the learning rate gradually over time, which results in larger changes at the beginning of training and subsequently smaller updates to weights as training continues. 
 
 ```
 # The base learning rate, momentum and the weight decay of the network.
@@ -315,14 +314,22 @@ power: 0.75
 
 ![Rate of learning rate decay with "inv"](img/learning_rate_policy.png)
 
-Another option is to decrease the learning rate in steps, so it drops suddenly by a factor of gamma at certain intervals, we'll explore the performance of that option next.
+Another option is to decrease the learning rate in steps, so it drops suddenly by a factor of gamma at certain intervals, we'll explore the performance of that option later.
 
-
+While training, the console will display loss every 100 iterations.
 ```
 # Display every 100 iterations
 display: 100
+```
+
+By setting `max_iter` to 10000, the model stops training after about 10 epochs.
+```
 # The maximum number of iterations
 max_iter: 10000
+```
+
+Instead of just snapshotting the caffemodel and solverstate at the end of training the model, the code below snapshots a version at the 5000th iteration.
+```
 # snapshot intermediate results
 snapshot: 5000
 snapshot_prefix: "examples/mnist/lenet"
@@ -340,25 +347,20 @@ That took about 3 minutes.
 
 ## Results
 
-We got an accuracy of 0.9905, and a testing loss function of 0.0299812.
+We got a final accuracy of 0.9905, and a testing loss function of 0.0299812. That's pretty neat. 
 
-That's pretty neat. 
+The actual model was stored to examples/mnist/lenet_iter_10000.caffemodel as a binary proto file. The solver state was saved to examples/mnist/lenet_iter_10000.solverstate.
 
-The actual model was stored to examples/mnist/lenet_iter_10000.caffemodel as a binary proto file.
+Now we can look at the training loss function, which gets printed by the output every 100 iterations, and the loss and accuracy from testing, which gets printed every 500 iterations.
 
-The solver state was saved to examples/mnist/lenet_iter_10000.solverstate.
+![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration](img/model_perf_1.png)
 
-We also got the model and solver state at 5000.
+- The learning rate gradually decreases. 
 
-Plots
-	Test accuracy (test score 0) vs. training iterations / time;
-	Test loss (test score 1) vs. training iterations / time;
-	Training loss vs. training iterations / time;
-	Learning rate vs. training iterations / time;
+- Sudden drop in values from training and test loss 
 
-Now we can look at the training loss function, which gets printed by the output every 100 iterations, and the accuracy from testing, which gets printed every 500 iterations.
+- Sudden increase in test accuracy and then a gradual increase from 0.9715 to 0.9905 for the remaining iterations
 
-![](img/model_perf_1.png)
 
 ### Optimizing
 
