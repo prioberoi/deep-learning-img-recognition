@@ -355,17 +355,56 @@ Now we can look at the training loss function, which gets printed by the output 
 
 ![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration](img/model_perf_1.png)
 
-- The learning rate gradually decreases. 
+As the learning rate gradually decreases, there is a sudden drop in training and test loss and a sudden increase in test accuracy by the end of the first epoch. The test accuracy gradually increases from 0.9715 to 0.9905 for the remaining iterations. 
 
-- Sudden drop in values from training and test loss 
-
-- Sudden increase in test accuracy and then a gradual increase from 0.9715 to 0.9905 for the remaining iterations
-
+We have made a lot of small choices for parameters, thresholds and functions for our model. A lot of these choices were the default for the MNIST tutorial and the resulting model had a really high accuracy. This is a result of other people's efforts to tune the model. While getting a higher than 0.9905 seems difficult, in the next section, I am going to experiment with tuning this model to see what makes it perform better or worse, since that would be a crucial component of developing any other deep learning model.
 
 ### Optimizing
 
+Each tuning effort will be labeled so you can look up the runtime.
+
+#### Early stopping
+
+Our model stops learning after 10 epochs and often models will use early-stopping to prevent overfitting. We can extend this to 20 epochs and look at the model accuracy on the test data to see if we over fit or if the model would benefit from more training.
+
+After updating the solver file with a `max_iter = 20000` in order to extend learning from 10 to 20 epochs, these are the results:
+
+![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration for model_2](img/model_perf_2.png)
+
+It is hard to see much of a difference, however the final test accuracy was 0.9906. When you compare the log(loss) for these two models, the training loss continues to decrease while the test_loss pretty much stays the same.
+
+![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration for model_2](img/compare_model_1_2.png)
+
+#### Activation functions
+
+In our analysis of the ReLU layer, above, we touched on some of the ambiguity around when to pick ReLU, sigmoid and tanh. While there has been some [recent](http://yann.lecun.com/exdb/publis/pdf/jarrett-iccv-09.pdf) image recognition work that has found ReLU to improve performance, it is worth exploring how the change in neuron activation function affects this model. These are the results of swapping out the ReLU activation function layer with sigmoid and tanh in the `lenet_train_test.prototxt` file:
+
+```
+# the ReLU layer was replaced with:
+
+# for sigmoid
+layer {
+  name: "encode1neuron"
+  type: "Sigmoid"
+  bottom: "ip1"
+  top: "ip1"
+}
+
+# for tanh
+layer {
+  name: "layer"
+  type: "TanH"
+  bottom: "ip1"
+  top: "ip1"
+}
+```
+
+
+
 Things to try
 
+ReLU layer:
+- swap out rectified linear activation with sigmoid and then tanh activation functions
 - Sigmoid, tanh and Rectified Linear Unit (ReLU) activation functions are options for activation functions.
 
 convolutional layer
@@ -382,8 +421,7 @@ convolutional layer
 pooling layer:
 - try AVE or STOCHASTIC pooling instead of max pooling (one of them may be the L2 pooling neilsen mentioned)
 
-ReLU layer:
-- swap out rectified linear activation with sigmoid and then tanh activation functions
+
 
 regularization:
 - L1 and L2 regularization
@@ -406,3 +444,5 @@ Here is a plot of the per-epoch validaion accuracies for each.
 
 Other things:
 - http://neuralnetworksanddeeplearning.com/chap6.html#problems_210372
+
+
