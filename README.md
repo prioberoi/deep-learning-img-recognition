@@ -2,9 +2,9 @@
 
 This tutorial walks you through setting up your jetson TX1, installing caffe (deep learning framework) prerequisites, installing caffe, and building a deep learning model.
 
-## Jetson TX1
+Our goal is to create a deep learning model on the Jetson TX1, so we can take advantage of its GPU for training a deep neural network. I will use the MNIST dataset of handwritten digits to build a model that can recognize and label each image. The MNIST dataset is included in almost every deep learning framework's tutorials since the machine learning problem is easy to understand and all the data cleaning and preprocessing is already done. I decided to use this dataset even though I would have to forego those steps since this is my first deep learning model and it allowed me to focus on model optimization. Tuning deep learning models is tricky and can yield powerful results in terms of performance and accuracy, plus this is a great way to dig in to the concepts that drive deep learning. 
 
-### Setup
+## Jetson TX1
 
 The jetson tx1 needs a monitor, mouse and keyboard. Mine came with wifi antennae but I used an ethernet cord while setting up. The most time consuming portion of setting up the Jetson TX1 was flashing over the Jetpack for L4T, which had the Cuda 7+ and cuDNN prerequisites I needed for caffe.
 
@@ -22,7 +22,7 @@ After flashing over the jetpack and running `make`, I made sure cuda was install
 
 ## Caffe Installation
 
-After making sure I had the [caffe prerequisites](http://caffe.berkeleyvision.org/installation.html) and cloning caffe into my home directory, I updated Makefile.config by uncommenting `USE_CUDNN := 1` and made sure /usr/include/python2.7 and /usr/lib/python2.7/dist-packages/numpy/core/include exists.
+After making sure I had the [caffe prerequisites](http://caffe.berkeleyvision.org/installation.html) and I had cloned [caffe](https://github.com/BVLC/caffe) into my home directory, I updated Makefile.config by uncommenting `USE_CUDNN := 1` and made sure /usr/include/python2.7 and /usr/lib/python2.7/dist-packages/numpy/core/include exists.
 
 Compiling went pretty smoothly except I got an error on `make all` that it couldn't find hdf5, which worked after I updated `INCLUDE_DIRS` and `LIBRARY_DIRS`
 ```
@@ -32,9 +32,11 @@ LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib /usr/lib/aarch64-linux-gnu
 
 ## Deep Learning
 
-[This tutorial](http://caffe.berkeleyvision.org/gathered/examples/mnist.html) was helpful in training and testing a deep learning model. Since this is my first deep learning model, Michael Nielsen's [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/) book was great for wrapping my brain around the concepts that drive deep learning.
+[This tutorial](http://caffe.berkeleyvision.org/gathered/examples/mnist.html) was helpful in training and testing a deep learning model. Michael Nielsen's [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/) book was great for wrapping my brain around the concepts behind deep learning.
 
-The code for the walkthrough of the layers below is from `lenet_train_test.prototxt` in the ~/caffe/examples/mnist directory. 
+As a reminder, what we are trying to do in build a deep learning model that can accuractely label handwritten digits by classifying each image as a digit between 0 to 9. The MNIST dataset (Modified National Institute of Standards and Technology data) has images of scanned documents that have been normalized in size and centered. Each image is 28 x 28 pixels.
+
+We're going to train our momdel on 60,000 images from this dataset and test our model out on a separate dataset of 10,000 to see how well it performs. 
 
 ### Data
 
@@ -50,13 +52,15 @@ cd $CAFFE_ROOT
 # ~/caffe/examples/mnist/mnist_train_lmdb
 ```
 
-This coverts the MNIST data into lmdb format, based on the value assigned to $BACKEND.
+This coverts the MNIST data into lmdb format, based on the value assigned to $BACKEND in `create_mnist.sh`
 
 ### MNIST classification model 
 
-Our Convolutional Neural Net uses supervised learning trained by stochastic gradient descent and is a slight adaption from the LeNet network. When training a CNN, we take the training inputs in batches until we have exhausted the inputs, which is the end of one epoch. This CNN has a `max_iter` of 10,000 and a `batch_size` of 64, therefore given the number of training samples, it will have approximately 10 epochs. 
+Our Convolutional Neural Net uses supervised learning trained by stochastic gradient descent and is a slight adaption of the LeNet network. When training a CNN, we take the training inputs in batches until we have exhausted the inputs, which is the end of one epoch. 
 
-It's made up of the following layers (check out lenet_train_test.prototxt).
+We take our training data in batches, each forward and backward pass on batches of the training data count as an iteration. Our training data is made up of 60,000 images and our `batch_size` is 64, which means it will take about 938 iterations to make up one epoch and cover the whole dataset. We have defined the `max_iter` at 10,000, which means our model will stop training at approximately 10 epochs.
+
+Let's walkthrough the layers of our neural net, the code for which is in `lenet_train_test.prototxt` in the ~/caffe/examples/mnist directory. 
 
 #### Data layer
 
@@ -208,7 +212,7 @@ layer {
 }
 ```
 
-### The accuracy layer
+#### The accuracy layer
 
 This is only run in the test phase, it will report out the model accuracy every 100 iterations.
 
@@ -250,14 +254,16 @@ Our whole network follows `input --> convolutional layer --> pooling layer --> c
 By adding that second round of convolutional and pooling layers, we use the output from the first pooling layer (each neuron of which indicates the presence or absence of a particular feature), which makes sense if you think of the output from that layer as a condensed down version of the original image. Also, this second convolutional layer doesn't just work on the 5 x 5 local receptive field from one feature map, but from all feature maps.
 
 So far, the number of neurons in each layer have changed like this for each image:
-28 x 28 input neurons
-20 x 24 x 24 hidden neurons in the convolutional layer
-20 x 12 x 12 hidden neurons in the pooling layer
-50 x 2 x 2 hidden neurons in the convolutional layer <------what?
-50 x 1 x 1 hidden neurons in the pooling layer <------what?
-500 x x x x hidden neurons in fully connected layer
-10 x x x x hidden neurons in fully connected layer
-leaving us with 10 output neurons
+
+28 x 28 input neurons <- for each of the 60,000 images
+20 x 24 x 24 hidden neurons in the convolutional layer <-- 20 feature maps and 24x24 because of the 5x5 local receptive fields
+20 x 12 x 12 hidden neurons in the pooling layer <- 12x12 because of the 2x2 kernel size.
+50 x 8 x 8 hidden neurons in the convolutional layer 
+50 x 4 x 4 hidden neurons in the pooling layer
+500 hidden neurons in fully connected layer
+10 hidden neurons in fully connected layer
+
+which leaves us with 10 outputs.
 
 ### Training the model
 
@@ -273,7 +279,7 @@ This tells the solver where to find the net file (lenet_train_test.prototxt)
 net: "examples/mnist/lenet_train_test.prototxt"
 ```
 
-When testing the model, 100 forward passes with 100 test iterations means we test the model of the full 10,000 images.
+When testing the model, 100 forward passes with 100 test iterations means we test the model on the full 10,000 test images.
 ```
 # test_iter specifies how many forward passes the test should carry out.
 # In the case of MNIST, we have test batch size 100 and 100 test iterations,
@@ -284,19 +290,16 @@ test_iter: 100
 
 At each iteration the output and loss are backpropogated to compute the gradients, which then updates parameters.
 
-The model is tested every 500 iterations
-
+The model is tested every 500 iterations so we can look at the change in accuracy and loss over iterations
 ```
 # Carry out testing every 500 training iterations.
 test_interval: 500
 ```
 
-This defines a learning rate of 0.01 and a momentum of 0.9. For SGD, caffe recommends that the learning rate be around 0.01 and that it drops by a constant factor (`gamma`) throughout training.
-
-We have a learning rate decay policy of "inv", which means the learning rate changes at each iteration in this way:
+For SGD, caffe recommends that the learning rate be around 0.01 and that it drops by a constant factor (`gamma`) throughout training. This defines a learning rate (`base_lr`) of 0.01 and a momentum of 0.9. The learning rate decay policy of "inv",  means the learning rate decreases at each iteration in this way:
 base_lr * (1 + gamma * iter) ^ (- power)
 
-With deep networks, finding the right balance for the learning rate means increasing performance and reducing training time.  The inv configuration below means the learning rate decreases gradually over time, which means large changes at the begiining of training and subsequently smaller updates to weights as training continues. 
+With deep networks, finding the right balance for the learning rate means increasing performance and reducing training time.  The inv configuration decreases the learning rate gradually over time, which results in larger changes at the beginning of training and subsequently smaller updates to weights as training continues. 
 
 ```
 # The base learning rate, momentum and the weight decay of the network.
@@ -311,15 +314,22 @@ power: 0.75
 
 ![Rate of learning rate decay with "inv"](img/learning_rate_policy.png)
 
-Another option is to decrease the learning rate in steps, so it drops suddenly by a factor of gamma at certain intervals, we'll explore the performance of that option next.
+Another option is to decrease the learning rate in steps, so it drops suddenly by a factor of gamma at certain intervals, we'll explore the performance of that option later.
 
-
-
+While training, the console will display loss every 100 iterations.
 ```
 # Display every 100 iterations
 display: 100
+```
+
+By setting `max_iter` to 10000, the model stops training after about 10 epochs.
+```
 # The maximum number of iterations
 max_iter: 10000
+```
+
+Instead of just snapshotting the caffemodel and solverstate at the end of training the model, the code below snapshots a version at the 5000th iteration.
+```
 # snapshot intermediate results
 snapshot: 5000
 snapshot_prefix: "examples/mnist/lenet"
@@ -335,17 +345,22 @@ Next we run the train_lenet.sh file to train the model. This runs the train comm
 
 That took about 3 minutes.
 
-### Results
+## Results
 
-We got an accuracy of 0.9905, and a testing loss function of 0.0299812.
+We got a final accuracy of 0.9905, and a testing loss function of 0.0299812. That's pretty neat. 
 
-That's pretty great. 
+The actual model was stored to examples/mnist/lenet_iter_10000.caffemodel as a binary proto file. The solver state was saved to examples/mnist/lenet_iter_10000.solverstate.
 
-The actual model was stored to examples/mnist/lenet_iter_10000.caffemodel as a binary proto file.
+Now we can look at the training loss function, which gets printed by the output every 100 iterations, and the loss and accuracy from testing, which gets printed every 500 iterations.
 
-The solver state was saved to examples/mnist/lenet_iter_10000.solverstate.
+![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration](img/model_perf_1.png)
 
-We also got the model and solver state at 5000.
+- The learning rate gradually decreases. 
+
+- Sudden drop in values from training and test loss 
+
+- Sudden increase in test accuracy and then a gradual increase from 0.9715 to 0.9905 for the remaining iterations
+
 
 ### Optimizing
 
@@ -388,3 +403,6 @@ loss:
 		/Users/prioberoi/Documents/pri_reusable_code/deep-learning-img-recognition/img/learning_rate_policy.png
 
 Here is a plot of the per-epoch validaion accuracies for each.
+
+Other things:
+- http://neuralnetworksanddeeplearning.com/chap6.html#problems_210372
