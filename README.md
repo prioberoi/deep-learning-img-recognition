@@ -357,11 +357,13 @@ Now we can look at the training loss function, which gets printed by the output 
 
 As the learning rate gradually decreases, there is a sudden drop in training and test loss and a sudden increase in test accuracy by the end of the first epoch. The test accuracy gradually increases from 0.9715 to 0.9905 for the remaining iterations. 
 
+The loss function doesn't look too linear and decreases pretty drastically, if that were not the case it would imply the learning rate might be too low or high (respectively). If we see a large variance between each batch in iteration, that might imply we should increase the batch size, but that doesn't seem to be much of an issue here.
+
 We have made a lot of small choices for parameters, thresholds and functions for our model. A lot of these choices were the default for the MNIST tutorial and the resulting model had a really high accuracy. This is a result of other people's efforts to tune the model. While getting a higher than 0.9905 seems difficult, in the next section, I am going to experiment with tuning this model to see what makes it perform better or worse, since that would be a crucial component of developing any other deep learning model.
 
 ### Optimizing
 
-Each tuning effort will be labeled so you can look up the runtime.
+Each tuning effort will be labeled so you can look up the runtime. Additionally, between each model run, the model parameters will be reset to model_1 (the default), so we can compare each subsequent model back to the original.
 
 #### Early stopping
 
@@ -371,7 +373,7 @@ After updating the solver file with a `max_iter = 20000` in order to extend lear
 
 ![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration for model_2](img/model_perf_2.png)
 
-It is hard to see much of a difference, however the final test accuracy was 0.9906. When you compare the log(loss) for these two models, the training loss continues to decrease while the test_loss pretty much stays the same.
+It is hard to see much of a difference, however the final test accuracy was 0.9906. When you compare the log(loss) for these two models, the training loss continues to decrease while the test_loss pretty much stays the same. 
 
 ![Plots of Learning Rate, Training/Test Loss and Test Accuracy per Iteration for model_2](img/compare_model_1_2.png)
 
@@ -399,13 +401,57 @@ layer {
 }
 ```
 
+The training loss and test loss for the sigmoid activation function was 0.0117318 and 0.0347721, whereas it was 0.0084399 and 0.0280827 for tanh. TanH has smaller loss values which means it made fewer classification errors.
+
+![Plots of testing and training loss for sigmoid (model_3) and tanH (model_4) activation functions](img/compare_model_3_4.png)
+
+The training and test loss from TanH is comparable to the values from ReLU, 0.00878728 and 0.0299812. The accuracy rates for the three functions followed a similar pattern where sigmoid was the least accurate (0.9895), followed by ReLU (0.9905), and TanH was the most accurate (0.9906), but not by much.
+
+![Plot of testing loss for ReLU (model_1), sigmoid (model_3) and tanH (model_4) activation functions](img/compare_model_1_3_4.png)
+
+For the most part, the loss function indicates we shouldn't use sigmoid as the neuron activation function.
+
+#### Feature maps and local receptive fields in convolutional layer
+
+Our first convolutional layer uses 20 feature maps, which can be interpreted as it looking for 20 features. Changing the `num_output` to 10 or 40 doesn't have a large effect on the loss or accuracy. However, I didn't experiment with the number of feature maps in the second convolutional layer, which is set to 50. Another option would be to change the layer architecture itself; stacking convolution laters before pool layers has been found to work well for larger and deeper networks, an option is to add a third convolutional layer --> pooling layer after our first two. 
+
+#### Learning rate
+
+Instead of using "inv" as the learning rate decay policy which slowly decreases the learning rate by iteration, we could use a step `lr_policy` which decreases the learning rate over iterations dy dropping it  by a factor of gamma after a certain number of iterations.
+
+```
+base_lr: 0.01     # begin training at a learning rate of 0.01 = 1e-2
+lr_policy: "step" # learning rate policy: drop the learning rate in "steps"
+                  # by a factor of gamma every stepsize iterations
+gamma: 0.1        # drop the learning rate by a factor of 10
+                  # (i.e., multiply it by a factor of gamma = 0.1)
+stepsize: 2500  # drop the learning rate every 2500 iterations
+max_iter: 10000
+momentum: 0.9
+```
+
+As discussed in the Results, nothing about the loss function made me think to play with the learning rate, however the accuracy rate increased from 0.9905 to 0.9914 .
+
+![Plot of testing loss for ReLU (model_1), sigmoid (model_3) and tanH (model_4) activation functions](img/compare_model_1_7.png)
+
+The step learning rate (solid line) also seems to result in smaller loss values for both training and testing. Part of the impact, however, may be coming from the overall lower learning rate in later iterations with "step" than with "inv". That's worth exploring further.
+
+#### Weight initialization
+
+
+#### Pooling layer method
+
+
+#### Regularization
+
+
+#### Backpropogation
 
 
 Things to try
 
-ReLU layer:
-- swap out rectified linear activation with sigmoid and then tanh activation functions
-- Sigmoid, tanh and Rectified Linear Unit (ReLU) activation functions are options for activation functions.
+
+- batch size
 
 convolutional layer
 - change number of features to 40 feature maps: num_output: 20
@@ -424,6 +470,7 @@ pooling layer:
 
 
 regularization:
+- http://lamda.nju.edu.cn/weixs/project/CNNTricks/CNNTricks.html
 - L1 and L2 regularization
 	try l2 regularization of λ=0.1
 - dropout 
@@ -440,7 +487,6 @@ loss:
 	/Users/prioberoi/Documents/pri_reusable_code/deep-learning-img-recognition/visualizations.R
 		/Users/prioberoi/Documents/pri_reusable_code/deep-learning-img-recognition/img/learning_rate_policy.png
 
-Here is a plot of the per-epoch validaion accuracies for each.
 
 Other things:
 - http://neuralnetworksanddeeplearning.com/chap6.html#problems_210372
