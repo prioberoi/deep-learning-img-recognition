@@ -142,7 +142,7 @@ layer {
 
 `lr_mult` is defined in the first param{} for the filters as a learning rate of 1 and in the second param{} for the biases, with a learning rate of 2. 
 
-The `weight_filler` initializes the filters from the [Xavier algorithm](http://jmlr.org/proceedings/papers/v9/glorot10a/glorot10a.pdf) instead of a Gaussian distribution. [This](http://andyljones.tumblr.com/post/110998971763/an-explanation-of-xavier-initialization) and [this](https://prateekvjoshi.com/2016/03/29/understanding-xavier-initialization-in-deep-neural-networks/) blogpost was helpful in getting a better understanding of the algorithm. My take away is the Xavier algorithm may help with the issue of a Gaussian distribution weight initialization allowing a neuron to saturate more and therefore cause learning slowdown. Caffe implements the Xavier algorithm by picking weights from a Gaussian distribution with a mean of 0 and a variance of 1/N.
+The `weight_filler` initializes the filters from the [Xavier algorithm](http://jmlr.org/proceedings/papers/v9/glorot10a/glorot10a.pdf) instead of a Gaussian distribution. [This](http://andyljones.tumblr.com/post/110998971763/an-explanation-of-xavier-initialization) and [this](https://prateekvjoshi.com/2016/03/29/understanding-xavier-initialization-in-deep-neural-networks/) blogpost was helpful in getting a better understanding of the algorithm. My take away is the Xavier algorithm may help with the issue that a Gaussian distribution weight initialization (with a mean of 0 and standard deviation of 1) allows a neuron to saturate more and therefore cause learning slowdown. Caffe implements the Xavier algorithm by picking weights from a Gaussian distribution with a mean of 0 and a variance of 1/N, instead.
 
 #### Pooling Layer
 
@@ -432,63 +432,58 @@ momentum: 0.9
 
 As discussed in the Results, nothing about the loss function made me think to play with the learning rate, however the accuracy rate increased from 0.9905 to 0.9914 .
 
-![Plot of testing loss for ReLU (model_1), sigmoid (model_3) and tanH (model_4) activation functions](img/compare_model_1_7.png)
+![Plots comparing learning rate, loss and test accuracy between model_1 (inv learning) and model_7(step learning)](img/compare_model_1_7.png)
 
-The step learning rate (solid line) also seems to result in smaller loss values for both training and testing. Part of the impact, however, may be coming from the overall lower learning rate in later iterations with "step" than with "inv". That's worth exploring further.
+The step learning rate (solid line) also seems to result in smaller loss values during testing. Part of the impact, however, may be coming from the overall lower learning rate in later iterations with "step" than with "inv". That's worth exploring further.
 
 #### Weight initialization
+
+Currently, the weights for our neural networks are initialized using the Xavier algorithm (discussed above) which may prevent over saturation. Generally, weights may be initialized from a Gauddian random variables, normalized to have a mean of 0 and standard deviation of 1. This runs the risk of a hidden neurons being saturated in a manner that makes them more impervious to small changes in activation and can cause learning slowdown. But, let's try it anyway and also see how setting the weights to 0 initially impacts the model.
+
+For each convolutional and fully-connected layer, I updated weight_filler:
+```
+# for Gaussian  with a mean = 0 and standard deviation = 1
+weight_filler {
+  type: "gaussian" #(default mean: 0)
+  std: 1
+}
+
+# to initialize to 0 
+weight_filler {
+  type: "constant"
+  value: 0
+}
+
+```
+
+Initializing the weights with a Gaussian distribution with mean 0 and standard deviation of 1 (model_8) did not go over well. The model accuracy fell to 0.1009 and the test and training loss jumped up as well:
+
+![Plots of learning rate, loss and test accuracy of model_8](img/model_perf_8.png)
+
+The change was so extreme, I wondered if I set up the parameters incorrectly and repeated the run with a standard deviation of 0.01 instead of 1, and accuracy jumped back up to 0.9884. 
+
+The constant weight initialization also returned terrible results with a accuracy of 0.1135:
+
+![Plots of learning rate, loss and test accuracy of model_9](img/model_perf_9.png)
+
+This is not as surprising since it seems like the learning rate just couldn't compensate and allow gradient descent to learn the appropriate biases.
 
 
 #### Pooling layer method
 
+Instead of looking for the maximum activation of a 2 x 2 region of neurons, like max-pooling does in the pooling layers, we could use L2 pooling which takes the square root of the sum of squares of the 2x2 region's activations. However, it doesn't seem like caffe supports L2 pooling at the moment. It does support AVE and STOCHASTIC, but the latter only for caffe engine, not cuDNN. 
 
 #### Regularization
 
+Regularization helps prevent overfitting, where we would see a big gap between the training data accuracies and the test data accuracies. Regularization helps prevent overfitting, since increasing the amount of test data isn't always an option. L2 regularization is the most common type.
 
-#### Backpropogation
+Caffe defaults to L2 regularization, but also supports L1. We can play with the `weight_decay`, which is set in the solver file to 0.0005. A small value for weight_decay makes sense with a smaller training set, but if we increase it dramatically to 0.1:
 
+![Plots of learning rate, loss and test accuracy of model_10](img/model_perf_10.png)
 
-Things to try
+The accuracy drops to 0.9052, loss increases and there is more variance in training loss values between iterations. It would be worth it to look at the results with a smaller training set and try `regularization_type: "L1"`.
 
+#### Other Tuning Options
 
-- batch size
-
-convolutional layer
-- change number of features to 40 feature maps: num_output: 20
-- change kernel_size in convolutional layer
-- play with strid length
-- change weight initialization (http://neuralnetworksanddeeplearning.com/chap3.html#weight_initialization) from xavier to normalized gaussian random variables (which means a neuron can saturate and have a learning slowdown):
-	http://caffe.berkeleyvision.org/tutorial/layers.html
-	weight_filler {
-      type: "gaussian" # initialize the filters from a Gaussian
-      std: 0.01        # distribution with stdev 0.01 (default mean: 0)
-    }
-
-pooling layer:
-- try AVE or STOCHASTIC pooling instead of max pooling (one of them may be the L2 pooling neilsen mentioned)
-
-
-
-regularization:
-- http://lamda.nju.edu.cn/weixs/project/CNNTricks/CNNTricks.html
-- L1 and L2 regularization
-	try l2 regularization of λ=0.1
-- dropout 
-- artificial expansion of the training data
-
-loss:
-- backpropagation
-
-- change lr from "inv" to "step"
-	http://caffe.berkeleyvision.org/tutorial/solver.html
-	https://github.com/BVLC/caffe/blob/master/src/caffe/proto/caffe.proto
-	http://cs231n.github.io/neural-networks-3/#anneal
-	http://machinelearningmastery.com/using-learning-rate-schedules-deep-learning-models-python-keras/
-	/Users/prioberoi/Documents/pri_reusable_code/deep-learning-img-recognition/visualizations.R
-		/Users/prioberoi/Documents/pri_reusable_code/deep-learning-img-recognition/img/learning_rate_policy.png
-
-
-Other things:
-- http://neuralnetworksanddeeplearning.com/chap6.html#problems_210372
-
+There are a lot of ways to tune a CNN, some of them in response to output from the model and some just seem worth experimenting with. I left a lot on the table, playing with the net architecture/layers, like modifications to backpropagation, L1 regularization, dropout, artifically expanding training data, variants on ReLU. Additionally, I need to expand out the diagnostic tools I use, this time I mostly relied on test/training loss and test accuracy.
 
