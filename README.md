@@ -1,8 +1,8 @@
 # Jetson TX1 and Deep Learning Tutorial
 
-Our goal is to create a deep learning model on the Jetson TX1, so we can take advantage of its GPU for training a deep neural network. I will use the MNIST dataset of handwritten digits to build a model that can recognize and label each image. The MNIST dataset is included in almost every deep learning framework's tutorials since the machine learning problem is easy to interpret and all the data cleaning and preprocessing is already done. I decided to use this dataset even though I would have to forego the data preprocedding steps since this is my first deep learning model and it allowed me to focus on understanding how the model works and model optimization. Tuning deep learning models is tricky and can yield powerful results in terms of performance and accuracy, so this is a great way to dig in to the concepts that drive deep learning. 
+Our goal is to create a deep learning model on the Jetson TX1, so we can take advantage of its GPU for training a deep neural network. I will use the MNIST dataset of handwritten digits to build a model that can recognize and label each image. The MNIST dataset is included in almost every deep learning framework's tutorials since the machine learning problem is easy to interpret and all the data cleaning and preprocessing is already done. I decided to use this dataset even though I would have to forego the data preprocessing steps since this is my first deep learning model and it allowed me to focus on understanding how the model works and model optimization. Tuning deep learning models is tricky and can yield powerful results in terms of performance and accuracy, so this is a great way to dig in to the concepts that drive deep learning. 
 
-The following two sections are a quick walkthrough of setting up the jetson TX1, installing caffe (deep learning framework) prerequisites, installing caffe, and building a deep learning model.
+The following two sections are a quick walkthrough of setting up the jetson TX1 and installing caffe. The last section covers building a deep learning model.
 
 ## Jetson TX1
 
@@ -14,7 +14,7 @@ This [guide](http://www.slothparadise.com/setup-cuda-7-0-nvidia-jetson-tx1-jetpa
 
 ![Terminal frozen at writing partition app with system.img](img/scrnshot_frozen_terminal.png)
 
-That turned turned out to be an issue with the USB being set to 1.0 instead of 2.0, which I was able to change by selecting "Enable USB Controller" (while the vm was powered down), from the USB settings in the VirtualBox manager. This required installing the [oracle virtualbox extension pack](https://www.virtualbox.org/wiki/Downloads). Another small snaffu I ran into was my screen would freeze on "applet not running on device, continue with bootloader", which turned out to be an issue because my mac/vm and the jetson were not on the same network. 
+That turned out to be an issue with the USB being set to 1.0 instead of 2.0, which I was able to change by selecting "Enable USB Controller" (while the vm was powered down), from the USB settings in the VirtualBox manager. This required installing the [oracle virtualbox extension pack](https://www.virtualbox.org/wiki/Downloads). Another small snaffu I ran into was my screen would freeze on "applet not running on device, continue with bootloader", which turned out to be an issue because my mac/vm and the jetson were not on the same network. 
 
 [This](https://developer.ridgerun.com/wiki/index.php?title=Jetpack_output_when_flashing_Tegra_X1) page includes the output when flashing works succesfully, which was a good reference.
 
@@ -56,7 +56,7 @@ cd $CAFFE_ROOT
 
 This coverts the MNIST data into lmdb format, based on the value assigned to $BACKEND in `create_mnist.sh`
 
-### MNIST classification model 
+### Setting up the MNIST classification model 
 
 Our Convolutional Neural Net uses supervised learning trained by stochastic gradient descent and is a slight adaption of the LeNet network. When training the CNN, we take our training data in batches, each forward and backward pass on batches of the training data counts as an iteration. Our training data is made up of 60,000 images and our `batch_size` is 64, this means it will take about 938 iterations to make up one epoch and cover the whole dataset. We have defined the `max_iter` at 10,000, which means our model will stop training at approximately 10 epochs.
 
