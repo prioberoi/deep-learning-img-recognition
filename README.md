@@ -322,7 +322,7 @@ While training, the console will display training loss every 100 iterations.
 display: 100
 ```
 
-By setting `max_iter` to 10000, the model stops training after about 10 epochs.
+By setting `max_iter` to 10,000, the model stops training after about 10 epochs.
 ```
 # The maximum number of iterations
 max_iter: 10000
@@ -363,7 +363,7 @@ We have made a lot of small choices for parameters, thresholds and functions for
 
 ### Optimizing
 
-Each tuning effort will be labeled so you can look up the runtime in the appendix below. Additionally, between each model run, the model parameters will be reset to model_1 (the default), so we can compare each subsequent model back to the original.
+Each tuning effort will be labeled so you can look up the runtime in the appendix at the bottom. Additionally, between each model run, the model parameters will be reset to model_1 (the default), so we can compare each subsequent model back to the original.
 
 #### Stopping training
 
@@ -384,7 +384,7 @@ In our analysis of the ReLU layer, above, we touched on some of the ambiguity ar
 ```
 # the ReLU layer was replaced with:
 
-# for sigmoid
+# model_3 for sigmoid
 layer {
   name: "encode1neuron"
   type: "Sigmoid"
@@ -392,7 +392,7 @@ layer {
   top: "ip1"
 }
 
-# for tanh
+# model_4 for tanh
 layer {
   name: "layer"
   type: "TanH"
@@ -405,7 +405,7 @@ The training loss and test loss for the sigmoid activation function was 0.011731
 
 ![Plots of testing and training loss for sigmoid (model_3) and tanH (model_4) activation functions](img/compare_model_3_4.png)
 
-The training and test loss from TanH is comparable to the values from ReLU, 0.00878728 and 0.0299812. The accuracy rates for the three functions followed a similar pattern where sigmoid was the least accurate (0.9895), followed by ReLU (0.9905), and TanH was the most accurate (0.9906), but not by much.
+The training and test loss from TanH is comparable to the values from ReLU, 0.00878728 and 0.0299812. The accuracy rates for the three functions followed a similar pattern, where sigmoid was the least accurate (0.9895), followed by ReLU (0.9905), and TanH was the most accurate (0.9906), but not by much.
 
 ![Plot of testing loss for ReLU (model_1), sigmoid (model_3) and tanH (model_4) activation functions](img/compare_model_1_3_4.png)
 
@@ -462,7 +462,7 @@ Initializing the weights with a Gaussian distribution with mean 0 and standard d
 
 The change was so extreme, I wondered if I set up the parameters incorrectly and repeated the run with a standard deviation of 0.01 instead of 1, and accuracy jumped back up to 0.9884. 
 
-The constant weight initialization also returned terrible results with a accuracy of 0.1135:
+The constant weight initialization also returned terrible results with an accuracy of 0.1135:
 
 ![Plots of learning rate, loss and test accuracy of model_9](img/model_perf_9.png)
 
@@ -475,7 +475,7 @@ Instead of looking for the maximum activation of a 2 x 2 region of neurons, like
 
 #### Regularization
 
-Regularization helps prevent overfitting, where we would see a big gap between the training data accuracies and the test data accuracies. Regularization helps prevent overfitting, since increasing the amount of test data isn't always an option. L2 regularization is the most common type.
+Regularization helps prevent overfitting, which would show up in our results as a big gap between the training data accuracies and the test data accuracies. Regularization helps prevent overfitting, since increasing the amount of test data isn't always an option. L2 regularization is the most common type.
 
 Caffe defaults to L2 regularization, but also supports L1. We can play with the regularization parameter, `weight_decay`, which is set in the solver file to 0.0005. A small value for weight_decay makes sense with a smaller training set, but if we increase it dramatically to 0.1:
 
